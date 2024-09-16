@@ -1,31 +1,37 @@
 from flask import Flask, jsonify
-import nmap
+import smtplib
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 
-@app.route('/scan/<ip_range>', methods=['GET'])
-def scan_network(ip_range):
-    scanner = nmap.PortScanner()
-    scanner.scan(ip_range, '1-1024', '-sV')
-    scan_result = []
+# Email sending function
+def send_email(subject, recipient, body):
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = 'youremail@example.com'  # Replace with your email
+    msg['To'] = recipient
 
-    for host in scanner.all_hosts():
-        host_info = {
-            "host": host,
-            "state": scanner[host].state(),
-            "open_ports": []
-        }
-        for proto in scanner[host].all_protocols():
-            ports = scanner[host][proto].keys()
-            for port in ports:
-                host_info["open_ports"].append({
-                    "port": port,
-                    "state": scanner[host][proto][port]['state'],
-                    "service": scanner[host][proto][port]['name']
-                })
-        scan_result.append(host_info)
-    
-    return jsonify(scan_result)
+    # Replace with your SMTP server details
+    smtp_server = 'smtp.gmail.com'  # Gmail SMTP server example
+    smtp_port = 587
+    smtp_user = 'youremail@example.com'  # Replace with your email
+    smtp_password = 'yourpassword'  # Replace with your email password
+
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()  # Encrypt the connection
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, recipient, msg.as_string())
+
+# Route to handle scan and send email
+@app.route('/send-email', methods=['GET'])
+def scan_and_send_email():
+    # Send an email when this route is accessed
+    send_email(
+        subject="VulnGuard Scan Initiated",
+        recipient="client@example.com",  # Replace with client's email
+        body="Your scan is in progress. You will receive a report shortly."
+    )
+    return jsonify({"message": "Email sent successfully!"})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
